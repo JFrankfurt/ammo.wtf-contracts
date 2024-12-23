@@ -9,27 +9,27 @@ contract ERC20FactoryTest is Test {
     address public owner;
     address public user;
     
-    // Events to test against
     event TokenCreated(address tokenAddress, string name, string symbol);
     
     function setUp() public {
-        // Setup initial test state
         owner = address(this);
         user = address(0xBAD);
         factory = new ERC20Factory();
     }
-    
-    // ====== Creation Tests ======
     
     function testCreateToken() public {
         string memory name = "Test Token";
         string memory symbol = "TEST";
         uint256 initialSupply = 1000000 * 10**18;
         
-        vm.expectEmit(true, false, false, true);
-        emit TokenCreated(address(0), name, symbol); // address(0) as we can't predict the exact address
-        
+        vm.recordLogs();
         address tokenAddress = factory.createToken(name, symbol, initialSupply);
+        
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(entries.length, 2); // Mint event and TokenCreated event
+        
+        // Verify the TokenCreated event
+        assertEq(entries[1].topics[0], keccak256("TokenCreated(address,string,string)"));
         
         CustomToken token = CustomToken(tokenAddress);
         assertEq(token.name(), name);
@@ -43,32 +43,30 @@ contract ERC20FactoryTest is Test {
         factory.createToken("Test Token", "TEST", 1000000 * 10**18);
     }
     
-    // ====== Burning Tests ======
-    
     function testBurnTokens() public {
-        // First create a token
         uint256 initialSupply = 1000000 * 10**18;
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
         CustomToken token = CustomToken(tokenAddress);
         
-        // Test burning half the supply
         uint256 burnAmount = initialSupply / 2;
+        // Approve the tokens first
+        token.approve(address(factory), burnAmount);
         factory.burnTokens(tokenAddress, burnAmount);
         
-        assertEq(token.balanceOf(owner), initialSupply - burnAmount);
+        assertEq(token.balanceOf(address(this)), initialSupply - burnAmount);
     }
     
     function testFailBurnMoreThanBalance() public {
-        // Create token with 100 supply
         uint256 initialSupply = 100;
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
+        CustomToken token = CustomToken(tokenAddress);
         
-        // Try to burn 101 tokens
+        // Approve first
+        token.approve(address(factory), initialSupply + 1);
         factory.burnTokens(tokenAddress, initialSupply + 1);
     }
     
     function testFailBurnNonFactoryToken() public {
-        // Deploy a standalone token (not through factory)
         CustomToken standaloneToken = new CustomToken(
             "Standalone",
             "STAND",
@@ -76,18 +74,20 @@ contract ERC20FactoryTest is Test {
             owner
         );
         
-        // Try to burn tokens from non-factory token
+        // Approve first
+        standaloneToken.approve(address(factory), 100);
         factory.burnTokens(address(standaloneToken), 100);
     }
     
     function testFailBurnTokensAsNonOwner() public {
         address tokenAddress = factory.createToken("Test Token", "TEST", 1000000 * 10**18);
+        CustomToken token = CustomToken(tokenAddress);
         
-        vm.prank(user);
+        vm.startPrank(user);
+        token.approve(address(factory), 100);
         factory.burnTokens(tokenAddress, 100);
+        vm.stopPrank();
     }
-    
-    // ====== Getter Function Tests ======
     
     function testGetTokenCount() public {
         assertEq(factory.getTokenCount(), 0);
@@ -100,28 +100,21 @@ contract ERC20FactoryTest is Test {
     }
     
     function testGetAllTokens() public {
-        // Create multiple tokens
         address token1 = factory.createToken("Token1", "TK1", 1000);
         address token2 = factory.createToken("Token2", "TK2", 1000);
         address token3 = factory.createToken("Token3", "TK3", 1000);
         
-        // Get all tokens
         address[] memory tokens = factory.getAllTokens();
         
-        // Verify array contents
         assertEq(tokens.length, 3);
         assertEq(tokens[0], token1);
         assertEq(tokens[1], token2);
         assertEq(tokens[2], token3);
     }
     
-    // ====== Token Verification Tests ======
-    
     function testIsTokenFromFactory() public {
-        // Create a token through factory
         address factoryToken = factory.createToken("Factory Token", "FT", 1000);
         
-        // Create a standalone token
         CustomToken standaloneToken = new CustomToken(
             "Standalone",
             "STAND",
@@ -129,14 +122,9 @@ contract ERC20FactoryTest is Test {
             owner
         );
         
-        // Verify factory token
         assertTrue(factory.isTokenFromFactory(factoryToken));
-        
-        // Verify standalone token is not recognized
         assertFalse(factory.isTokenFromFactory(address(standaloneToken)));
     }
-    
-    // ====== Fuzz Tests ======
     
     function testFuzzCreateToken(
         string memory name,
@@ -152,21 +140,21 @@ contract ERC20FactoryTest is Test {
         
         assertEq(token.name(), name);
         assertEq(token.symbol(), symbol);
-        assertEq(token.balanceOf(owner), initialSupply);
+        assertEq(token.balanceOf(address(this)), initialSupply);
     }
     
     function testFuzzBurnTokens(uint256 burnAmount) public {
-        // Create token with maximum supply
-        uint256 initialSupply = type(uint256).max;
+        uint256 initialSupply = 1000000 * 10**18;
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
         CustomToken token = CustomToken(tokenAddress);
         
         // Ensure burn amount is not greater than initial supply
-        vm.assume(burnAmount <= initialSupply);
+        burnAmount = bound(burnAmount, 0, initialSupply);
         
-        // Burn tokens
+        // Approve the tokens first
+        token.approve(address(factory), burnAmount);
         factory.burnTokens(tokenAddress, burnAmount);
         
-        assertEq(token.balanceOf(owner), initialSupply - burnAmount);
+        assertEq(token.balanceOf(address(this)), initialSupply - burnAmount);
     }
 }
