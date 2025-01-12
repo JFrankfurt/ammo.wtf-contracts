@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/ERC20Factory.sol";
+import "../src/AmmoFactory.sol";
 
 contract VerifyDeployment is Script {
     function run() external view {
@@ -12,7 +12,7 @@ contract VerifyDeployment is Script {
         address factory = vm.parseAddress(deployedAddresses);
 
         // Verify factory
-        ERC20Factory deployedFactory = ERC20Factory(factory);
+        AmmoFactory deployedFactory = AmmoFactory(factory);
 
         // Verify owner
         require(deployedFactory.owner() == vm.envAddress("INITIAL_OWNER"), "Owner mismatch");

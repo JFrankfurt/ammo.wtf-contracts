@@ -2,10 +2,11 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/ERC20Factory.sol";
+import "@openzeppelin/contracts/interfaces/IERC2612.sol";
+import "../src/AmmoFactory.sol";
 
-contract ERC20FactoryTest is Test {
-    ERC20Factory public factory;
+contract AmmoFactoryTest is Test {
+    AmmoFactory public factory;
     address public owner;
     address public user;
     address public feeRecipient;
@@ -17,7 +18,7 @@ contract ERC20FactoryTest is Test {
         owner = address(this);
         user = address(0xBAD);
         feeRecipient = address(0xF33);
-        factory = new ERC20Factory();
+        factory = new AmmoFactory();
     }
 
     function testCreateToken() public {
@@ -34,7 +35,7 @@ contract ERC20FactoryTest is Test {
         // Verify the TokenCreated event
         assertEq(entries[1].topics[0], keccak256("TokenCreated(address,string,string)"));
 
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
         assertEq(token.name(), name);
         assertEq(token.symbol(), symbol);
         assertEq(token.balanceOf(owner), initialSupply);
@@ -49,7 +50,7 @@ contract ERC20FactoryTest is Test {
     function testBurnTokens() public {
         uint256 initialSupply = 1000000 * 10 ** 18;
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         uint256 burnAmount = initialSupply / 2;
         // Approve the tokens first
@@ -62,7 +63,7 @@ contract ERC20FactoryTest is Test {
     function testFailBurnMoreThanBalance() public {
         uint256 initialSupply = 100;
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         // Approve first
         token.approve(address(factory), initialSupply + 1);
@@ -70,7 +71,7 @@ contract ERC20FactoryTest is Test {
     }
 
     function testFailBurnNonFactoryToken() public {
-        CustomToken standaloneToken = new CustomToken("Standalone", "STAND", 1000000 * 10 ** 18, owner);
+        AmmoToken standaloneToken = new AmmoToken("Standalone", "STAND", 1000000 * 10 ** 18, owner);
 
         // Approve first
         standaloneToken.approve(address(factory), 100);
@@ -79,7 +80,7 @@ contract ERC20FactoryTest is Test {
 
     function testFailBurnTokensAsNonOwner() public {
         address tokenAddress = factory.createToken("Test Token", "TEST", 1000000 * 10 ** 18);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         vm.startPrank(user);
         token.approve(address(factory), 100);
@@ -113,7 +114,7 @@ contract ERC20FactoryTest is Test {
     function testIsTokenFromFactory() public {
         address factoryToken = factory.createToken("Factory Token", "FT", 1000);
 
-        CustomToken standaloneToken = new CustomToken("Standalone", "STAND", 1000, owner);
+        AmmoToken standaloneToken = new AmmoToken("Standalone", "STAND", 1000, owner);
 
         assertTrue(factory.isTokenFromFactory(factoryToken));
         assertFalse(factory.isTokenFromFactory(address(standaloneToken)));
@@ -125,7 +126,7 @@ contract ERC20FactoryTest is Test {
         vm.assume(initialSupply > 0 && initialSupply <= type(uint256).max);
 
         address tokenAddress = factory.createToken(name, symbol, initialSupply);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         assertEq(token.name(), name);
         assertEq(token.symbol(), symbol);
@@ -135,7 +136,7 @@ contract ERC20FactoryTest is Test {
     function testFuzzBurnTokens(uint256 burnAmount) public {
         uint256 initialSupply = 1000000 * 10 ** 18;
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         // Ensure burn amount is not greater than initial supply
         burnAmount = bound(burnAmount, 0, initialSupply);
@@ -175,7 +176,7 @@ contract ERC20FactoryTest is Test {
         // Create token and set fee
         uint256 initialSupply = 1000 * 10 ** 18;
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         uint256 feePercent = 500; // 5%
         factory.setFeeDetails(feeRecipient, feePercent);
@@ -197,7 +198,7 @@ contract ERC20FactoryTest is Test {
         address newFeeRecipient = address(0x0101010101010101010101010101010101010101);
         uint256 initialSupply = 1000 * 10 ** 18;
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         // Set initial fee and make transfer
         factory.setFeeDetails(feeRecipient, 500);
@@ -219,7 +220,7 @@ contract ERC20FactoryTest is Test {
         transferAmount = bound(transferAmount, 1, initialSupply);
 
         address tokenAddress = factory.createToken("Test Token", "TEST", initialSupply);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         factory.setFeeDetails(feeRecipient, feePercent);
 
@@ -234,7 +235,7 @@ contract ERC20FactoryTest is Test {
 
     function testTransferFromWithFees() public {
         address tokenAddress = factory.createToken("Test Token", "TEST", 1000 * 10 ** 18);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         factory.setFeeDetails(feeRecipient, 500);
         token.approve(user, 100 * 10 ** 18);
@@ -248,7 +249,7 @@ contract ERC20FactoryTest is Test {
 
     function testTransferWithZeroFee() public {
         address tokenAddress = factory.createToken("Test Token", "TEST", 1000 * 10 ** 18);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         factory.setFeeDetails(feeRecipient, 0);
 
@@ -261,7 +262,7 @@ contract ERC20FactoryTest is Test {
 
     function testTransferWithSmallAmounts() public {
         address tokenAddress = factory.createToken("Test Token", "TEST", 1000 * 10 ** 18);
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
 
         factory.setFeeDetails(feeRecipient, 500);
         token.transfer(user, 19); // Test with amount < 10000 (fee basis points)
@@ -269,5 +270,143 @@ contract ERC20FactoryTest is Test {
         // Verify no dust is created and amounts add up
         uint256 totalSupply = token.totalSupply();
         assertEq(token.balanceOf(address(this)) + token.balanceOf(user) + token.balanceOf(feeRecipient), totalSupply);
+    }
+
+    // Custom errors from ERC20Permit
+    error ERC2612ExpiredSignature(uint256 deadline);
+    error ERC2612InvalidSigner(address signer, address owner);
+
+    function testPermit() public {
+        address tokenAddress = factory.createToken("Test Token", "TEST", 1000 * 10 ** 18);
+        AmmoToken token = AmmoToken(tokenAddress);
+
+        uint256 privateKey = 0xBEEF;
+        address signer = vm.addr(privateKey);
+        address spender = address(0xCAFE);
+        uint256 value = 100 * 10 ** 18;
+        uint256 deadline = block.timestamp + 1 hours;
+
+        uint256 nonce = token.nonces(signer);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                signer,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
+
+        bytes32 domainSeparator = token.DOMAIN_SEPARATOR();
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+
+        token.permit(signer, spender, value, deadline, v, r, s);
+
+        assertEq(token.allowance(signer, spender), value);
+        assertEq(token.nonces(signer), nonce + 1);
+    }
+
+    function testPermitExpired() public {
+        address tokenAddress = factory.createToken("Test Token", "TEST", 1000 * 10 ** 18);
+        AmmoToken token = AmmoToken(tokenAddress);
+
+        uint256 privateKey = 0xBEEF;
+        address signer = vm.addr(privateKey);
+        address spender = address(0xCAFE);
+        uint256 value = 100 * 10 ** 18;
+        uint256 deadline = block.timestamp - 1; // Expired deadline
+
+        uint256 nonce = token.nonces(signer);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                signer,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
+
+        bytes32 domainSeparator = token.DOMAIN_SEPARATOR();
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+
+        vm.expectRevert(abi.encodeWithSelector(ERC2612ExpiredSignature.selector, deadline));
+        token.permit(signer, spender, value, deadline, v, r, s);
+    }
+
+    function testPermitInvalidSignature() public {
+        address tokenAddress = factory.createToken("Test Token", "TEST", 1000 * 10 ** 18);
+        AmmoToken token = AmmoToken(tokenAddress);
+
+        uint256 privateKey = 0xBEEF;
+        address signer = vm.addr(privateKey);
+        address spender = address(0xCAFE);
+        uint256 value = 100 * 10 ** 18;
+        uint256 deadline = block.timestamp + 1 hours;
+
+        uint256 nonce = token.nonces(signer);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                signer,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
+
+        bytes32 domainSeparator = token.DOMAIN_SEPARATOR();
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey + 1, digest); // Wrong private key
+
+        address recoveredSigner = ecrecover(digest, v, r, s);
+        vm.expectRevert(abi.encodeWithSelector(ERC2612InvalidSigner.selector, recoveredSigner, signer));
+        token.permit(signer, spender, value, deadline, v, r, s);
+    }
+
+    function testPermitReplay() public {
+        address tokenAddress = factory.createToken("Test Token", "TEST", 1000 * 10 ** 18);
+        AmmoToken token = AmmoToken(tokenAddress);
+
+        uint256 privateKey = 0xBEEF;
+        address signer = vm.addr(privateKey);
+        address spender = address(0xCAFE);
+        uint256 value = 100 * 10 ** 18;
+        uint256 deadline = block.timestamp + 1 hours;
+
+        // Generate signature with initial nonce
+        uint256 nonce = token.nonces(signer);
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                signer,
+                spender,
+                value,
+                nonce,
+                deadline
+            )
+        );
+
+        bytes32 domainSeparator = token.DOMAIN_SEPARATOR();
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+
+        // First permit should succeed
+        token.permit(signer, spender, value, deadline, v, r, s);
+
+        // Attempt to replay the same permit
+        vm.expectRevert(); // The exact error will depend on the ERC20Permit implementation
+        token.permit(signer, spender, value, deadline, v, r, s);
     }
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/ERC20Factory.sol";
+import "../src/AmmoFactory.sol";
 
 contract DeployScript is Script {
     // Configuration struct to hold deployment parameters
@@ -21,7 +21,7 @@ contract DeployScript is Script {
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
         // Deploy factory
-        ERC20Factory factory = new ERC20Factory();
+        AmmoFactory factory = new AmmoFactory();
 
         // Configure initial settings
         if (config.initialFeePercent > 0) {
@@ -71,9 +71,9 @@ contract DeployScript is Script {
         return config;
     }
 
-    function logDeployment(ERC20Factory factory, DeployConfig memory config) internal view {
+    function logDeployment(AmmoFactory factory, DeployConfig memory config) internal view {
         console.log("\n-----------------------------------------------");
-        console.log("ERC20Factory Deployment Summary");
+        console.log("AmmoFactory Deployment Summary");
         console.log("-----------------------------------------------");
         console.log("Factory address:", address(factory));
         console.log("Owner:", factory.owner());
@@ -86,7 +86,7 @@ contract DeployScript is Script {
         console.log("-----------------------------------------------\n");
     }
 
-    function saveDeployment(ERC20Factory factory) internal {
+    function saveDeployment(AmmoFactory factory) internal {
         string memory deploymentData = vm.toString(address(factory));
         vm.writeFile("deployment-addresses.txt", deploymentData);
     }

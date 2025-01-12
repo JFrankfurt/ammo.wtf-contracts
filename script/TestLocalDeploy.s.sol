@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/ERC20Factory.sol";
+import "../src/AmmoFactory.sol";
 
 contract TestLocalDeploy is Script {
     function setUp() public {
@@ -16,7 +16,7 @@ contract TestLocalDeploy is Script {
         vm.startBroadcast();
 
         // Deploy factory
-        ERC20Factory factory = new ERC20Factory();
+        AmmoFactory factory = new AmmoFactory();
         console.log("Factory deployed at:", address(factory));
 
         // Test factory functionality
@@ -27,7 +27,7 @@ contract TestLocalDeploy is Script {
         console.log("Test token deployed at:", tokenAddr);
 
         // Test token transfer with fees
-        CustomToken token = CustomToken(tokenAddr);
+        AmmoToken token = AmmoToken(tokenAddr);
         token.transfer(address(0xCAFE), 100 * 10 ** 18);
 
         // Verify fee collection

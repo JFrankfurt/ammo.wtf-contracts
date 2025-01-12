@@ -3,31 +3,27 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-interface ITokenFactory {
+interface IAmmoFactory {
     function getFeeDetails() external view returns (address recipient, uint256 feePercent);
 }
 
-contract CustomToken is ERC20, ERC20Burnable {
-    ITokenFactory public immutable factory;
+contract AmmoToken is ERC20, ERC20Burnable, ERC20Permit {
+    IAmmoFactory public immutable factory;
 
-    constructor(
-        string memory name,
-        string memory symbol,
-        uint256 initialSupply,
-        address owner
-    ) ERC20(name, symbol) {
-        factory = ITokenFactory(msg.sender);
+    constructor(string memory name, string memory symbol, uint256 initialSupply, address owner)
+        ERC20(name, symbol)
+        ERC20Permit(name)
+    {
+        factory = IAmmoFactory(msg.sender);
         _mint(owner, initialSupply);
     }
 
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal virtual override {
-        if (from != address(0) && to != address(0)) { // Skip fee for mint/burn
+    function _update(address from, address to, uint256 value) internal virtual override {
+        if (from != address(0) && to != address(0)) {
+            // Skip fee for mint/burn
             (address feeRecipient, uint256 feePercent) = factory.getFeeDetails();
             if (feePercent > 0) {
                 uint256 feeAmount = (value * feePercent) / 10000; // Fee in basis points
@@ -40,7 +36,7 @@ contract CustomToken is ERC20, ERC20Burnable {
     }
 }
 
-contract ERC20Factory is Ownable, ITokenFactory {
+contract AmmoFactory is Ownable, IAmmoFactory {
     event TokenCreated(address tokenAddress, string name, string symbol);
     event FeeUpdated(address recipient, uint256 feePercent);
 
@@ -65,17 +61,12 @@ contract ERC20Factory is Ownable, ITokenFactory {
         revert("Ownership cannot be renounced");
     }
 
-    function createToken(
-        string memory name,
-        string memory symbol,
-        uint256 initialSupply
-    ) public onlyOwner returns (address) {
-        CustomToken token = new CustomToken(
-            name,
-            symbol,
-            initialSupply,
-            owner()
-        );
+    function createToken(string memory name, string memory symbol, uint256 initialSupply)
+        public
+        onlyOwner
+        returns (address)
+    {
+        AmmoToken token = new AmmoToken(name, symbol, initialSupply, owner());
         createdTokens.push(address(token));
         emit TokenCreated(address(token), name, symbol);
         return address(token);
@@ -83,13 +74,13 @@ contract ERC20Factory is Ownable, ITokenFactory {
 
     function burnTokens(address tokenAddress, uint256 amount) public onlyOwner {
         require(isTokenFromFactory(tokenAddress), "Token not created by this factory");
-        CustomToken token = CustomToken(tokenAddress);
+        AmmoToken token = AmmoToken(tokenAddress);
         require(token.balanceOf(owner()) >= amount, "Insufficient balance");
         token.burnFrom(owner(), amount);
     }
 
     function isTokenFromFactory(address tokenAddress) public view returns (bool) {
-        for (uint i = 0; i < createdTokens.length; i++) {
+        for (uint256 i = 0; i < createdTokens.length; i++) {
             if (createdTokens[i] == tokenAddress) {
                 return true;
             }
