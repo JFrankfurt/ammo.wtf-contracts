@@ -6,7 +6,6 @@ import "forge-std/console.sol";
 import "../src/AmmoFactory.sol";
 
 contract DeployScript is Script {
-    // Configuration struct to hold deployment parameters
     struct DeployConfig {
         address initialOwner;
         address initialFeeRecipient;
@@ -14,10 +13,8 @@ contract DeployScript is Script {
     }
 
     function run() external {
-        // Load configuration
         DeployConfig memory config = getConfig();
 
-        // Deploy contracts
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
         // Deploy factory
@@ -35,10 +32,7 @@ contract DeployScript is Script {
 
         vm.stopBroadcast();
 
-        // Log deployment information
         logDeployment(factory, config);
-
-        // Write deployment addresses to file
         saveDeployment(factory);
     }
 

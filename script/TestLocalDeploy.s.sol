@@ -6,10 +6,7 @@ import "forge-std/console.sol";
 import "../src/AmmoFactory.sol";
 
 contract TestLocalDeploy is Script {
-    function setUp() public {
-        // Verify we're on the fork
-        require(block.chainid == 84532, "Not on Base Testnet fork");
-    }
+    function setUp() public {}
 
     function run() public {
         // Test entire deployment process

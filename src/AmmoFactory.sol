@@ -13,12 +13,34 @@ interface IAmmoFactory {
 contract AmmoToken is ERC20, ERC20Burnable, ERC20Permit {
     IAmmoFactory public immutable factory;
 
+    event Redeemed(address indexed from, address indexed to, uint256 value, bytes encryptedData);
+
     constructor(string memory name, string memory symbol, uint256 initialSupply, address owner)
         ERC20(name, symbol)
         ERC20Permit(name)
     {
         factory = IAmmoFactory(msg.sender);
         _mint(owner, initialSupply);
+    }
+
+    /**
+     * @dev Combines transfer with encrypted shipping data
+     * @param to Recipient address -- should always be the store's current address
+     * @param amount Amount of tokens to transfer
+     * @param encryptedShippingData Encrypted payload containing shipping information
+     * @return success Whether the operation succeeded
+     */
+    function redeem(address to, uint256 amount, bytes calldata encryptedShippingData) external returns (bool) {
+        require(encryptedShippingData.length > 0, "Invalid shipping data");
+
+        // Transfer tokens
+        bool success = transfer(to, amount);
+
+        if (success) {
+            emit Redeemed(msg.sender, to, amount, encryptedShippingData);
+        }
+
+        return success;
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
