@@ -3,6 +3,9 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "../src/AmmoFactory.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+error OwnableUnauthorizedAccount(address account);
 
 contract AmmoFactoryScenarioTest is Test {
     AmmoFactory public factory;
@@ -107,5 +110,46 @@ contract AmmoFactoryScenarioTest is Test {
         // Verify the burn worked
         assertEq(token.totalSupply(), 500000);
         assertEq(token.balanceOf(address(this)), 500000);
+    }
+
+    function testOwnershipAndMinting() public {
+        // Create token as owner
+        address tokenAddr = factory.createToken("TestToken", "TTK", 1000000);
+        AmmoToken token = AmmoToken(tokenAddr);
+
+        // Verify initial ownership
+        assertEq(token.owner(), owner);
+
+        // Try to create token as non-owner
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, user1));
+        factory.createToken("FailToken", "FAIL", 1000000);
+        vm.stopPrank();
+
+        // Try to mint as non-owner
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, user1));
+        token.mint(user1, 100000);
+        vm.stopPrank();
+
+        // Mint as owner should succeed
+        uint256 initialSupply = token.totalSupply();
+        token.mint(owner, 500000);
+        assertEq(token.totalSupply(), initialSupply + 500000);
+        assertEq(token.balanceOf(owner), initialSupply + 500000);
+
+        // Transfer ownership to user1
+        token.transferOwnership(user1);
+        assertEq(token.owner(), user1);
+
+        // Previous owner should no longer be able to mint
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, owner));
+        token.mint(owner, 100000);
+
+        // New owner should be able to mint
+        vm.startPrank(user1);
+        token.mint(user1, 100000);
+        vm.stopPrank();
+        assertEq(token.balanceOf(user1), 100000);
     }
 }

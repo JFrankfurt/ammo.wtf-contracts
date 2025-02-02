@@ -10,17 +10,23 @@ interface IAmmoFactory {
     function getFeeDetails() external view returns (address recipient, uint256 feePercent);
 }
 
-contract AmmoToken is ERC20, ERC20Burnable, ERC20Permit {
+contract AmmoToken is ERC20, ERC20Burnable, ERC20Permit, Ownable {
     IAmmoFactory public immutable factory;
 
     event Redeemed(address indexed from, address indexed to, uint256 value, bytes encryptedData);
 
     constructor(string memory name, string memory symbol, uint256 initialSupply, address owner)
         ERC20(name, symbol)
+        ERC20Burnable()
         ERC20Permit(name)
+        Ownable(owner)
     {
         factory = IAmmoFactory(msg.sender);
         _mint(owner, initialSupply);
+    }
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
     }
 
     /**
@@ -46,7 +52,7 @@ contract AmmoToken is ERC20, ERC20Burnable, ERC20Permit {
     function _update(address from, address to, uint256 value) internal virtual override {
         if (from != address(0) && to != address(0)) {
             // Skip fee for mint/burn
-            (address feeRecipient, uint256 feePercent) = factory.getFeeDetails();
+            (address feeRecipient, uint256 feePercent) = factory           .getFeeDetails();
             if (feePercent > 0) {
                 uint256 feeAmount = (value * feePercent) / 10000; // Fee in basis points
                 super._update(from, feeRecipient, feeAmount);

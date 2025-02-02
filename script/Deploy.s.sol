@@ -15,7 +15,7 @@ contract DeployScript is Script {
     function run() external {
         DeployConfig memory config = getConfig();
 
-        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
+        vm.startBroadcast();
 
         // Deploy factory
         AmmoFactory factory = new AmmoFactory();
@@ -33,7 +33,6 @@ contract DeployScript is Script {
         vm.stopBroadcast();
 
         logDeployment(factory, config);
-        saveDeployment(factory);
     }
 
     function getConfig() internal view returns (DeployConfig memory) {
@@ -78,10 +77,5 @@ contract DeployScript is Script {
         console.log("Initial fee recipient configured:", config.initialFeeRecipient);
         console.log("Initial fee percent configured:", config.initialFeePercent);
         console.log("-----------------------------------------------\n");
-    }
-
-    function saveDeployment(AmmoFactory factory) internal {
-        string memory deploymentData = vm.toString(address(factory));
-        vm.writeFile("deployment-addresses.txt", deploymentData);
     }
 }

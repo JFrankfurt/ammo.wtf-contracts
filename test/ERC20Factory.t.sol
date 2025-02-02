@@ -30,10 +30,10 @@ contract AmmoFactoryTest is Test {
         address tokenAddress = factory.createToken(name, symbol, initialSupply);
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        assertEq(entries.length, 2); // Mint event and TokenCreated event
+        assertEq(entries.length, 3); // OwnershipTransferred, Mint event, and TokenCreated event
 
         // Verify the TokenCreated event
-        assertEq(entries[1].topics[0], keccak256("TokenCreated(address,string,string)"));
+        assertEq(entries[2].topics[0], keccak256("TokenCreated(address,string,string)"));
 
         AmmoToken token = AmmoToken(tokenAddress);
         assertEq(token.name(), name);
